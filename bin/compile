@@ -107,19 +107,19 @@ package_download "${R_BINARIES}" "${VENDOR_DIR}"
 # need to copy the binaries to /app/vendor so that R works
 mkdir -p /app/vendor/gcc
 echo "Copying gcc files into /app/vendor/gcc" | indent
-cp -R "$VENDOR_DIR/gcc/*" /app/vendor/gcc
+mv "$VENDOR_DIR/gcc/" /app/vendor/
 
 mkdir -p /app/vendor/glibc
 echo "Copying glibc files into /app/vendor/glibc" | indent
-cp -R $VENDOR_DIR/glibc/* /app/vendor/glibc
+mv $VENDOR_DIR/glibc/* /app/vendor/
 
 mkdir -p /app/vendor/gsl
 echo "Copying gsl files into /app/vendor/gsl" | indent
-cp -R $VENDOR_DIR/gsl/* /app/vendor/gsl
+mv $VENDOR_DIR/gsl/* /app/vendor/
 
 mkdir -p /app/vendor/R
 echo "Copying R files into /app/vendor/R" | indent
-cp -R $VENDOR_DIR/R/* /app/vendor/R
+mv $VENDOR_DIR/R/ /app/vendor/
 
 # HACK: need to copy over the gcc libs so that packages can find them
 mkdir -p /app/vendor/R/lib64/R/lib
