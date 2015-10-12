@@ -22,11 +22,6 @@ function indent() {
   esac
 }
 
-function read_var() {
-  echo $(head -n 1 $1)
-}
-
-
 function package_download() {
   url="$1"
   location="$2"
@@ -41,39 +36,26 @@ unset GIT_DIR
 # parse and derive params
 BUILD_DIR=$1
 CACHE_DIR="$2/vendor"
-LP_DIR=`cd $(dirname $0); cd ..; pwd`
+COMPILE_BUILDPACK_DIR=$(cd $(dirname $0) && cd .. && pwd)
 BUILDPACK_DIR="$(dirname $(dirname $0))"
-
-# fix STACK variable if unset
-if [ -z "${STACK}" ];
-then
-  STACK="cedar-14"
-fi
-
-# config
-
-# read in R version if file exists
-if [[ -f $BUILD_DIR/.r-version ]]; then
-  R_VERSION=`read_var $BUILD_DIR/.r-version`
-else
-  R_VERSION="3.2.2"
-fi
-
-# read in buildback binary version if file exists
-if [[ -f $BUILD_DIR/.r-buildpack-version ]]; then
-  BUILD_PACK_VERSION=`read_var $BUILD_DIR/.r-buildpack-version`
-else
-  BUILD_PACK_VERSION="20150815-1425"
-fi
-
-S3_BUCKET="heroku-buildpack-r"
-R_BINARIES="http://${S3_BUCKET}.s3.amazonaws.com/${STACK}/R-${R_VERSION}-binaries-${BUILD_PACK_VERSION}.tar.gz"
-
-VENDOR_DIR="$BUILD_DIR/vendor"
-CRAN_MIRROR="http://cran.revolutionanalytics.com"
+echo "BUILD_DIR: $BUILD_DIR" | indent
+echo "COMPILE_BUILDPACK_DIR: $COMPILE_BUILDPACK_DIR" | indent
+echo "BUILDPACK_DIR: $BUILDPACK_DIR" | indent
 
 mkdir -p $CACHE_DIR
+echo "Created CACHE_DIR: $CACHE_DIR" | indent
 
+# config
+R_VERSION="3.1.3"
+BUILD_PACK_VERSION="20140218-0019"
+
+S3_BUCKET="heroku-buildpack-r"
+R_BINARIES="https://heroku-buildpack-r.s3.amazonaws.com/R-3.1.3-binaries-20150718-2347.tar.gz"
+echo "R_BINARIES: $R_BINARIES" | indent
+
+VENDOR_DIR="$BUILD_DIR/vendor"
+R_BASE="$VENDOR_DIR/R"
+CRAN_MIRROR="http://cran.revolutionanalytics.com"
 
 REPOSITORY_ROOT="download.pivotal.io.s3.amazonaws.com"
 JDK_VERSION="1.7.0_51"
@@ -82,7 +64,7 @@ JDK="jdk${JDK_VERSION}"
 PLATFORM="lucid"
 ARCH="x86_64"
 #JDK_URL="http://${REPOSITORY_ROOT}/openjdk/${PLATFORM}/${ARCH}/${JDK}.tar.gz"
-JDK_URL="https://s3-us-west-2.amazonaws.com/java-r-buildpack/jdk-7u51-linux-i586.tar.gz"
+JDK_URL="https://www.reucon.com/cdn/java/jdk-7u55-linux-x64.tar.gz"
 echo "JDK_URL: $JDK_URL" | indent
 JAVA_HOME_TEMP="$VENDOR_DIR/$JDK"
 #: ${JAVA_HOME=}
@@ -116,34 +98,62 @@ echo "JAVA_CPPFLAGS: $JAVA_CPPFLAGS" | indent
 #fi
 
 # vendor R into the slug
-echo "Vendoring R $R_VERSION for $STACK stack ($BUILD_PACK_VERSION)" | indent
+echo "Vendoring R $R_VERSION" | indent
 
 # download and unpack binaries
-echo "Downloading and unpacking R binaries ($R_BINARIES)" | indent
-curl $R_BINARIES -s -o - | tar xzf - -C $BUILD_DIR
+echo "Downloading and unpacking R binaries into '$VENDOR_DIR'" | indent
+package_download "${R_BINARIES}" "${VENDOR_DIR}"
 
-# need to copy the binaries to /app/vendor so that R works when compiling packages
+# need to copy the binaries to /app/vendor so that R works
+mkdir -p /app/vendor/gcc
+echo "Copying gcc files into /app/vendor/gcc" | indent
+mv "$VENDOR_DIR/gcc/" /app/vendor/
 
-mkdir -p /app/.apt
-cp -R $VENDOR_DIR/.apt/* /app/.apt
+mkdir -p /app/vendor/glibc
+echo "Copying glibc files into /app/vendor/glibc" | indent
+mv $VENDOR_DIR/glibc/* /app/vendor/
+
+mkdir -p /app/vendor/gsl
+echo "Copying gsl files into /app/vendor/gsl" | indent
+mv $VENDOR_DIR/gsl/* /app/vendor/
 
 mkdir -p /app/vendor/R
-cp -R $VENDOR_DIR/R/* /app/vendor/R
+echo "Copying R files into /app/vendor/R" | indent
+mv $VENDOR_DIR/R/ /app/vendor/
 
-# needed for compiling packages
-export PATH="/app/vendor/R/bin:/app/.apt/usr/bin:/app/bin:/usr/ruby1.9.2/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-export R_INCLUDE="/app/vendor/R/lib64/R/include"
-export LD_LIBRARY_PATH="/app/.apt/usr/lib/libblas:/app/.apt/usr/lib/lapack:/app/.apt/usr/lib/x86_64-linux-gnu:/app/.apt/usr/lib/i386-linux-gnu:/app/.apt/usr/lib:$LD_LIBRARY_PATH"
-export LIBRARY_PATH="/app/.apt/usr/lib/x86_64-linux-gnu:/app/.apt/usr/lib/i386-linux-gnu:/app/.apt/usr/lib:$LIBRARY_PATH"
-export INCLUDE_PATH="/app/.apt/usr/include:$INCLUDE_PATH"
-export CPATH="$INCLUDE_PATH"
-export CPPPATH="$INCLUDE_PATH"
-export PKG_CONFIG_PATH="/app/.apt/usr/lib/x86_64-linux-gnu/pkgconfig:/app/.apt/usr/lib/i386-linux-gnu/pkgconfig:/app/.apt/usr/lib/pkgconfig:$PKG_CONFIG_PATH"
-export LDFLAGS="-L/app/.apt/usr/lib/libblas -L/app/.apt/usr/lib/lapack $LDFLAGS"
+# HACK: need to copy over the gcc libs so that packages can find them
+mkdir -p /app/vendor/R/lib64/R/lib
+echo "Copying lib64 files into /app/vendor/R/lib64/R/lib" | indent
+cp /app/vendor/gcc/lib64/* /app/vendor/R/lib64/R/lib
 
-# copy over environment
+# R needs to know where gfortran and glibc header files are
+export PATH="$JAVA_HOME/bin:/app/vendor/R/bin:/app/vendor/gcc/bin:$PATH"
+echo "PATH set to '$PATH'" | indent
+
+export LDFLAGS="-L/app/vendor/gcc/lib64 -L/app/vendor/gsl/lib"
+export CPPFLAGS="-I/app/vendor/glibc/string -I/app/vendor/glibc/time -I/app/vendor/gsl/include"
+export PKG_LDFLAGS=$LDFLAGS
+export PKG_CPPFLAGS=$CPPFLAGS
+
+export R_HOME=$R_BASE/lib64/R
+export R_INCLUDE=$R_HOME/include
+echo "R_HOME set to '$R_HOME'" | indent
+echo "R_INCLUDE set to '$R_INCLUDE'" | indent
+
+# hack for libreadline shared library version
+#cd /lib
+#ln -n ./libreadline.so.6 libreadline.so.5
+
+# copy over 'r' environment
 mkdir -p $BUILD_DIR/.profile.d
+echo "Copying $BUILDPACK_DIR/bin/r_environment.sh to $BUILD_DIR/.profile.d/r_environment.sh" | indent
 cp "$BUILDPACK_DIR/bin/r_environment.sh" $BUILD_DIR/.profile.d/r_environment.sh
+
+# copy over setup environment
+if [ -f "$BUILD_DIR/config/setup.sh" ]; then
+    echo "Copying $BUILD_DIR/config/setup.sh to $BUILD_DIR/.profile.d/setup.sh" | indent
+    cp "$BUILD_DIR/config/setup.sh" $BUILD_DIR/.profile.d/setup.sh
+fi
 
 # prevent warnings when building packages
 mkdir -p /app/vendor/R/lib64/R/doc/html
@@ -166,8 +176,12 @@ RPROG
 
 echo "R $R_VERSION successfully installed" | indent
 
-# need to copy binaries back so that any
-# installed packages are included in the slug
-rm -rf $VENDOR_DIR/R
-mkdir -p $VENDOR_DIR/R
+# need to copy binaries back so that any installed packages are included in the slug
 cp -R /app/vendor/R/* $VENDOR_DIR/R
+#cp -R /app/vendor/$JDK/* $VENDOR_DIR/$JDK
+
+# setup rjava
+echo "Calling R CMD javareconf" | indent
+#/app/vendor/${JDK}/bin/java -version
+echo "PATH set to '$PATH'" | indent
+R CMD javareconf
