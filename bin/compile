@@ -73,7 +73,7 @@ VENDOR_DIR="$BUILD_DIR/vendor"
 CRAN_MIRROR="http://cran.revolutionanalytics.com"
 
 mkdir -p $CACHE_DIR
-
+mkdir -p $VENDOR_DIR
 
 REPOSITORY_ROOT="download.pivotal.io.s3.amazonaws.com"
 JDK_VERSION="1.7.0_51"
