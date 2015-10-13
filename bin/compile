@@ -70,7 +70,7 @@ S3_BUCKET="heroku-buildpack-r"
 R_BINARIES="http://${S3_BUCKET}.s3.amazonaws.com/${STACK}/R-${R_VERSION}-binaries-${BUILD_PACK_VERSION}.tar.gz"
 
 VENDOR_DIR="$BUILD_DIR/vendor"
-VENDOR_DIR_TWO="/app/vendor"
+#VENDOR_DIR_TWO="/app/vendor"
 CRAN_MIRROR="http://cran.revolutionanalytics.com"
 
 mkdir -p $CACHE_DIR
@@ -99,7 +99,7 @@ echo "Downloading and unpacking $JDK into '$VENDOR_DIR'" | indent
 wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/7u4-b20/jdk-7u4-linux-x64.tar.gz"
 #mv jdk-8u60-linux-x64.tar.gz "${VENDOR_DIR_TWO}"
 mkdir "${VENDOR_DIR_TWO}/jdk-7u4-linux-x64"
-mv  jdk-7u4-linux-x64.tar.gz "${VENDOR_DIR_TWO}"
+mv  jdk-7u4-linux-x64.tar.gz "/app/vendor"
 #sleep 10s
 tar -zxf "${VENDOR_DIR}/jdk-7u4-linux-x64.tar.gz"
 #wget "${JDK_URL}" --no-check-certificate
