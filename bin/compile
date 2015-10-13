@@ -95,7 +95,8 @@ echo "Downloading and unpacking $JDK into '$VENDOR_DIR'" | indent
 #package_download "${JDK_URL}" "${VENDOR_DIR}"
 #curl -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" -k "https://edelivery.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u60-linux-x64.tar.gz"
 wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/7u4-b20/jdk-7u4-linux-x64.tar.gz"
-mv jdk-8u60-linux-x64.tar.gz "${VENDOR_DIR}"
+#mv jdk-8u60-linux-x64.tar.gz "${VENDOR_DIR}"
+mv  jdk-7u4-linux-x64.tar.gz "${VENDOR_DIR}"
 sleep 10s
 tar xzf - -C "${VENDOR_DIR}"
 #wget "${JDK_URL}" --no-check-certificate
