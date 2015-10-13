@@ -83,7 +83,7 @@ mkdir -p $CACHE_DIR
 #mkdir =p $VENDOR_DIR_TWO
 
 REPOSITORY_ROOT="download.pivotal.io.s3.amazonaws.com"
-JDK_VERSION="1.7.0_51"
+JDK_VERSION="1.7.0_04"
 #JDK="openjdk-${JDK_VERSION}"
 JDK="jdk${JDK_VERSION}"
 PLATFORM="lucid"
