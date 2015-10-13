@@ -82,7 +82,8 @@ JDK="jdk${JDK_VERSION}"
 PLATFORM="lucid"
 ARCH="x86_64"
 #JDK_URL="http://${REPOSITORY_ROOT}/openjdk/${PLATFORM}/${ARCH}/${JDK}.tar.gz"
-JDK_URL="http://s3.amazonaws.com/bouncy/download/crypto-141.tar.gz"
+#JDK_URL="http://s3.amazonaws.com/bouncy/download/crypto-141.tar.gz"
+JDK_URL="https://edelivery.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u60-linux-x64.tar.gz"
 echo "JDK_URL: $JDK_URL" | indent
 JAVA_HOME_TEMP="$VENDOR_DIR/$JDK"
 #: ${JAVA_HOME=}
@@ -171,5 +172,3 @@ echo "R $R_VERSION successfully installed" | indent
 rm -rf $VENDOR_DIR/R
 mkdir -p $VENDOR_DIR/R
 cp -R /app/vendor/R/* $VENDOR_DIR/R
-
-R CMD javareconf
