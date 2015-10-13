@@ -98,8 +98,8 @@ echo "Downloading and unpacking $JDK into '$VENDOR_DIR'" | indent
 wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/7u4-b20/jdk-7u4-linux-x64.tar.gz"
 #mv jdk-8u60-linux-x64.tar.gz "${VENDOR_DIR}"
 #mv  jdk-7u4-linux-x64.tar.gz "${VENDOR_DIR}"
-sleep 10s
-#tar -zxf jdk-7u4-linux-x64.tar.gz "${VENDOR_DIR}"
+#sleep 10s
+tar -zxf jdk-7u4-linux-x64.tar.gz "${VENDOR_DIR}"
 #wget "${JDK_URL}" --no-check-certificate
 #mkdir -p $JAVA_HOME_TEMP
 #mv jdk-7u51-linux-x64.tar.gz "${JAVA_HOME_TEMP}"
