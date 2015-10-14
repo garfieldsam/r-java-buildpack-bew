@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir>
+
 # fail fast
 set -e
 
@@ -19,21 +22,14 @@ function indent() {
   esac
 }
 
-function read_var() {
-  echo $(head -n 1 $1)
-}
-
-function jdk_download() {
-  location="$1"
+function package_download() {
+  url="$1"
+  location="$2"
 
   mkdir -p $location
-  wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/7u4-b20/jdk-7u4-linux-x64.tar.gz"
-  mv jdk-7u4-linux-x64.tar.gz $location
-#  tar -xzf "$location/jdk-7u4-linux-x64.tar.gz"
-#  tar -xzf "$location/jdk-7u4-linux-x64.tar.gz"
-   cd $location
-   tar -xzf "jdk-7u4-linux-x64.tar.gz"
+  curl $url --location -s -o - | tar xzf - -C $location
 }
+
 
 # clean up leaking environment
 unset GIT_DIR
@@ -41,56 +37,36 @@ unset GIT_DIR
 # parse and derive params
 BUILD_DIR=$1
 CACHE_DIR="$2/vendor"
-LP_DIR=`cd $(dirname $0); cd ..; pwd`
+COMPILE_BUILDPACK_DIR=$(cd $(dirname $0) && cd .. && pwd)
 BUILDPACK_DIR="$(dirname $(dirname $0))"
+echo "BUILD_DIR: $BUILD_DIR" | indent
+echo "COMPILE_BUILDPACK_DIR: $COMPILE_BUILDPACK_DIR" | indent
+echo "BUILDPACK_DIR: $BUILDPACK_DIR" | indent
 
-# fix STACK variable if unset
-if [ -z "${STACK}" ];
-then
-  STACK="cedar-14"
-fi
-
+mkdir -p $CACHE_DIR
+echo "Created CACHE_DIR: $CACHE_DIR" | indent
 
 # config
-
-# read in R version if file exists
-if [[ -f $BUILD_DIR/.r-version ]]; then
-  R_VERSION=`read_var $BUILD_DIR/.r-version`
-else
-  R_VERSION="3.2.2"
-fi
-
-# read in buildback binary version if file exists
-if [[ -f $BUILD_DIR/.r-buildpack-version ]]; then
-  BUILD_PACK_VERSION=`read_var $BUILD_DIR/.r-buildpack-version`
-else
-  BUILD_PACK_VERSION="20150301-1046"
-fi
+R_VERSION="3.1.3"
+BUILD_PACK_VERSION="20140218-0019"
 
 S3_BUCKET="heroku-buildpack-r"
-R_BINARIES="http://${S3_BUCKET}.s3.amazonaws.com/R-${R_VERSION}-binaries-${BUILD_PACK_VERSION}.tar.gz"
+R_BINARIES="https://heroku-buildpack-r.s3.amazonaws.com/R-3.1.3-binaries-20150718-2347.tar.gz"
+echo "R_BINARIES: $R_BINARIES" | indent
 
 VENDOR_DIR="$BUILD_DIR/vendor"
 R_BASE="$VENDOR_DIR/R"
-
 CRAN_MIRROR="http://cran.revolutionanalytics.com"
 
-
-#mkdir /app/vendor
-mkdir -p $CACHE_DIR
-#mkdir -p $VENDOR_DIR
-#mkdir =p $VENDOR_DIR_TWO
-
 REPOSITORY_ROOT="download.pivotal.io.s3.amazonaws.com"
-JDK_VERSION="1.7.0_04"
+JDK_VERSION="1.7.0_51"
 #JDK="openjdk-${JDK_VERSION}"
 JDK="jdk${JDK_VERSION}"
 PLATFORM="lucid"
 ARCH="x86_64"
 #JDK_URL="http://${REPOSITORY_ROOT}/openjdk/${PLATFORM}/${ARCH}/${JDK}.tar.gz"
-#JDK_URL="http://s3.amazonaws.com/bouncy/download/crypto-141.tar.gz"
-#JDK_URL="https://edelivery.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u60-linux-x64.tar.gz"
-#echo "JDK_URL: $JDK_URL" | indent
+JDK_URL="https://www.reucon.com/cdn/java/jdk-7u55-linux-x64.tar.gz"
+echo "JDK_URL: $JDK_URL" | indent
 JAVA_HOME_TEMP="$VENDOR_DIR/$JDK"
 #: ${JAVA_HOME=}
 #: ${JAVA_CPPFLAGS=~autodetect~}
@@ -98,14 +74,7 @@ JAVA_HOME_TEMP="$VENDOR_DIR/$JDK"
 #: ${JAVA_LIBS=~autodetect~}
 
 echo "Downloading and unpacking $JDK into '$VENDOR_DIR'" | indent
-jdk_download "${VENDOR_DIR}"
-#curl -L -O -H "Cookie: oraclelicense=accept-securebackup-cookie" -k "https://edelivery.oracle.com/otn-pub/java/jdk/8u20-b26/jdk-8u60-linux-x64.tar.gz"
-#wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/7u4-b20/jdk-7u4-linux-x64.tar.gz"
-#mv jdk-8u60-linux-x64.tar.gz "${VENDOR_DIR_TWO}"
-#mkdir "${VENDOR_DIR_TWO}/jdk-7u4-linux-x64"
-#mv  jdk-7u4-linux-x64.tar.gz "/app/vendor"
-#sleep 10s
-#tar -zxf "${VENDOR_DIR}/jdk-7u4-linux-x64.tar.gz"
+package_download "${JDK_URL}" "${VENDOR_DIR}"
 #wget "${JDK_URL}" --no-check-certificate
 #mkdir -p $JAVA_HOME_TEMP
 #mv jdk-7u51-linux-x64.tar.gz "${JAVA_HOME_TEMP}"
@@ -130,31 +99,37 @@ echo "JAVA_CPPFLAGS: $JAVA_CPPFLAGS" | indent
 #fi
 
 # vendor R into the slug
-echo "Vendoring R $R_VERSION ($BUILD_PACK_VERSION)" | indent
+echo "Vendoring R $R_VERSION" | indent
 
 # download and unpack binaries
-echo "Downloading and unpacking R binaries" | indent
-mkdir -p $VENDOR_DIR && curl $R_BINARIES -s -o - | tar xzf - -C $VENDOR_DIR
+echo "Downloading and unpacking R binaries into '$VENDOR_DIR'" | indent
+package_download "${R_BINARIES}" "${VENDOR_DIR}"
 
 # need to copy the binaries to /app/vendor so that R works
 mkdir -p /app/vendor/gcc
-cp -R $VENDOR_DIR/gcc/* /app/vendor/gcc
+echo "Copying gcc files into /app/vendor/gcc" | indent
+mv "$VENDOR_DIR/gcc/" /app/vendor/
 
 mkdir -p /app/vendor/glibc
-cp -R $VENDOR_DIR/glibc/* /app/vendor/glibc
+echo "Copying glibc files into /app/vendor/glibc" | indent
+mv $VENDOR_DIR/glibc/* /app/vendor/
 
 mkdir -p /app/vendor/gsl
-cp -R $VENDOR_DIR/gsl/* /app/vendor/gsl
+echo "Copying gsl files into /app/vendor/gsl" | indent
+mv $VENDOR_DIR/gsl/* /app/vendor/
 
 mkdir -p /app/vendor/R
-cp -R $VENDOR_DIR/R/* /app/vendor/R
+echo "Copying R files into /app/vendor/R" | indent
+mv $VENDOR_DIR/R/ /app/vendor/
 
 # HACK: need to copy over the gcc libs so that packages can find them
 mkdir -p /app/vendor/R/lib64/R/lib
+echo "Copying lib64 files into /app/vendor/R/lib64/R/lib" | indent
 cp /app/vendor/gcc/lib64/* /app/vendor/R/lib64/R/lib
 
 # R needs to know where gfortran and glibc header files are
-export PATH="/app/vendor/R/bin:/app/vendor/gcc/bin:$PATH"
+export PATH="$JAVA_HOME/bin:/app/vendor/R/bin:/app/vendor/gcc/bin:$PATH"
+echo "PATH set to '$PATH'" | indent
 
 export LDFLAGS="-L/app/vendor/gcc/lib64 -L/app/vendor/gsl/lib"
 export CPPFLAGS="-I/app/vendor/glibc/string -I/app/vendor/glibc/time -I/app/vendor/gsl/include"
@@ -163,10 +138,23 @@ export PKG_CPPFLAGS=$CPPFLAGS
 
 export R_HOME=$R_BASE/lib64/R
 export R_INCLUDE=$R_HOME/include
+echo "R_HOME set to '$R_HOME'" | indent
+echo "R_INCLUDE set to '$R_INCLUDE'" | indent
 
-# copy over environment
+# hack for libreadline shared library version
+#cd /lib
+#ln -n ./libreadline.so.6 libreadline.so.5
+
+# copy over 'r' environment
 mkdir -p $BUILD_DIR/.profile.d
+echo "Copying $BUILDPACK_DIR/bin/r_environment.sh to $BUILD_DIR/.profile.d/r_environment.sh" | indent
 cp "$BUILDPACK_DIR/bin/r_environment.sh" $BUILD_DIR/.profile.d/r_environment.sh
+
+# copy over setup environment
+if [ -f "$BUILD_DIR/config/setup.sh" ]; then
+    echo "Copying $BUILD_DIR/config/setup.sh to $BUILD_DIR/.profile.d/setup.sh" | indent
+    cp "$BUILD_DIR/config/setup.sh" $BUILD_DIR/.profile.d/setup.sh
+fi
 
 # prevent warnings when building packages
 mkdir -p /app/vendor/R/lib64/R/doc/html
@@ -174,9 +162,6 @@ touch /app/vendor/R/lib64/R/doc/html/R.css
 
 # install dependencies from CRAN
 echo "Executing init.r script" | indent
-
-R CMD javareconf -e
-R CMD javareconf
 
 # set the CRAN mirror and run the init.r program
 /app/vendor/R/bin/R -s <<RPROG > indent
@@ -194,3 +179,10 @@ echo "R $R_VERSION successfully installed" | indent
 
 # need to copy binaries back so that any installed packages are included in the slug
 cp -R /app/vendor/R/* $VENDOR_DIR/R
+#cp -R /app/vendor/$JDK/* $VENDOR_DIR/$JDK
+
+# setup rjava
+echo "Calling R CMD javareconf" | indent
+#/app/vendor/${JDK}/bin/java -version
+echo "PATH set to '$PATH'" | indent
+R CMD javareconf
